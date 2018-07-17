@@ -9,7 +9,6 @@ description = {
 }
 dependencies = {
    "lua ~> 5.1",
-   "luajit"
 }
 build = {
    type = "builtin",
