@@ -39,6 +39,7 @@ mkdir %{__repo}
 %install
 cd %{__repo}
 luarocks --tree=%{buildroot}%{_prefix} make graphite-scm-1.rockspec
+rm -rf %{buildroot}/%{_prefix}/lib{,64}/luarocks/*
 
 %clean
 rm -rf %{buildroot}
@@ -47,7 +48,6 @@ rm -rf %{__repo}
 %files
 %defattr(-,root,root)
 %{_datadir}/lua/%{lua_version}/*
-%{luarocks_libdir}/luarocks/*
 
 %changelog
 
