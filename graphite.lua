@@ -1,5 +1,7 @@
 local ffi = require 'ffi'
 
+local _VERSION = 0.2
+
 local function redef(t,def)
 	if not pcall(ffi.typeof, t) then
 		ffi.cdef(def)
@@ -36,13 +38,9 @@ redef('struct sockaddr_in', [[
 ]])
 
 fdef('socket',   [[ int socket(int domain, int type, int protocol); ]])
-fdef('connect',  [[ int connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen); ]])
-fdef('memset',   [[ void *memset(void *s, int c, size_t n); ]])
 fdef('htons',    [[ uint16_t htons(uint16_t hostshort); ]])
 fdef('inet_addr',[[ in_addr_t inet_addr(const char *cp); ]])
 fdef('sendto',   [[ ssize_t sendto(int sockfd, const void *buf, size_t len, int flags, const struct sockaddr *dest_addr, socklen_t addrlen); ]])
-fdef('strlen',   [[ size_t strlen(const char *s); ]])
-fdef('close',    [[ int close(int fd); ]])
 fdef('strerror', [[ char *strerror(int errnum); ]])
 
 local sockaddr_in = ffi.typeof("struct sockaddr_in")
@@ -71,22 +69,30 @@ local logger = setmetatable({ log = {} }, {
 })
 
 function M:new(args)
-	if not args then
-		print("Creating dummy graphite with no args")
-		return { send = function() end }
+	local dummy = { send = function() end }
+	if type(args) ~= 'table' then
+		print("[graphite]: Creating dummy graphite with no args")
+		return dummy
 	end
-	assert(args.ip, "ip required");
+	if not args.ip then
+		print("[graphite]: ip is required")
+		return dummy
+	end
+	if args.enabled == false then
+		print("[graphite]: enabled == false")
+		return dummy
+	end
 	local self = setmetatable({
 		ip      = tostring(args.ip);
 		port    = tonumber(args.port or 2003);
 		prefix  = tostring(args.prefix or "");
-		timeout = tonumber(args.timeout or 1);
 		log     = logger(args.log);
 	}, { __index = M })
 
 	self.sockfd = C.socket(2, 2, 0)
 	if tonumber(self.sockfd) == -1 then
-		return false, "Socket not openned: " .. strerror()
+		self.log.error("Socket not openned: %s", strerror())
+		return dummy
 	end
 
 	local chost = in_addr(C.inet_addr(ffi.cast("const char *", self.ip)))
